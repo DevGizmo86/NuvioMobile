@@ -739,6 +739,25 @@ internal fun MainAppContent(
                         AppDeepLinkRepository.markConsumed(deepLink)
                     }
 
+                    AppDeepLink.HlsProxyTest -> {
+                        val launch = PlayerLaunch(
+                            profileId = ProfileRepository.activeProfileId,
+                            title = "Big Buck Bunny — HLS test",
+                            sourceUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+                            streamType = "hls",
+                            streamTitle = "Big Buck Bunny",
+                            providerName = "Mux HLS Test Streams",
+                            // No media identity: do not add the diagnostic clip to watch history.
+                            parentMetaId = "",
+                            parentMetaType = "",
+                        )
+                        val launchId = PlayerLaunchStore.put(launch)
+                        navController.navigate(PlayerRoute(launchId = launchId, title = launch.title)) {
+                            launchSingleTop = true
+                        }
+                        AppDeepLinkRepository.markConsumed(deepLink)
+                    }
+
                     AppDeepLink.Downloads -> {
                         activateTab(AppScreenTab.Settings)
                         navController.navigate(DownloadsSettingsRoute(downloadsSettingsTitle)) {

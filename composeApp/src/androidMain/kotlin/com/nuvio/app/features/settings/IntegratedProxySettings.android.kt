@@ -2,6 +2,7 @@ package com.nuvio.app.features.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -12,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.deeplink.AppDeepLinkRepository
 import com.nuvio.app.features.proxy.ProxyPreferences
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -36,6 +38,10 @@ internal actual fun IntegratedProxySettings(isTablet: Boolean) {
                         Text((if (mode == value) "✓ " else "") + stringResource(label))
                     }
                 }
+                Button(onClick = AppDeepLinkRepository::openHlsProxyTest) {
+                    Text(stringResource(Res.string.proxy_test_button))
+                }
+                Text(stringResource(Res.string.proxy_test_description))
                 Text(stringResource(Res.string.proxy_limitations))
             }
         }

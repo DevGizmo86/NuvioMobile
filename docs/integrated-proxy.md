@@ -20,6 +20,17 @@ riproduzioni dirette o sorgenti escluse, anche se il proxy è abilitato nelle im
 Indica il percorso utilizzato, non garantisce che il provider risponda correttamente.
 Non esiste un servizio sempre attivo: non servono Termux o un server esterno.
 
+## Test senza addon
+
+Nella stessa sezione toccare **Prova stream HLS**. Si apre Big Buck Bunny, lo stream
+pubblico di Mux, direttamente nel player interno (anche se è configurato un player
+esterno). Non occorre incollare URL o installare un addon.
+
+Provare prima con **Disattivato**, uscire dal player e ripetere con **Automatico —
+stream HLS**: nella seconda prova deve comparire **Proxy attivo**. Il pulsante non
+modifica la modalità scelta. Il video utilizza internet e non viene identificato
+come un film della libreria per il salvataggio della cronologia.
+
 ## Cosa funziona
 
 - Player interni Android ExoPlayer e libmpv.

@@ -6,4 +6,6 @@
     <string name="proxy_all">Stream HTTP — HLS e file diretti</string>
     <string name="proxy_limitations">Sperimentale. Si applica alla prossima riproduzione. Non include estrazione dai siti, riscrittura DASH, casting o player esterni.</string>
     <string name="proxy_active">Proxy attivo</string>
+    <string name="proxy_test_button">Prova stream HLS</string>
+    <string name="proxy_test_description">Apre Big Buck Bunny nel player interno con la modalità proxy selezionata. Confronta Disattivato e Automatico: il badge Proxy attivo compare solo quando viene usato il proxy. Lo stream pubblico di prova utilizza la connessione internet.</string>
 </resources>
