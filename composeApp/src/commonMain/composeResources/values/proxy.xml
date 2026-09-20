@@ -5,4 +5,5 @@
     <string name="proxy_hls">Automatic — HLS streams</string>
     <string name="proxy_all">HTTP streams — HLS and direct files</string>
     <string name="proxy_limitations">Experimental. Applies to the next playback. No website extraction, DASH rewriting, casting or external-player support.</string>
+    <string name="proxy_active">Proxy active</string>
 </resources>

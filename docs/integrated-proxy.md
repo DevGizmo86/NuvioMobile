@@ -14,6 +14,10 @@ Impostazioni → Riproduzione → Proxy integrato:
 La scelta si applica alla prossima apertura del player. Il server si avvia alla
 riproduzione e viene chiuso quando il player esce dalla composizione o cambia sorgente.
 Resta disponibile durante il passaggio automatico da ExoPlayer a libmpv.
+Nel player compare il badge **Proxy attivo** solo dopo la creazione della sessione
+locale e l'instradamento della sorgente attraverso di essa. Il badge non appare per
+riproduzioni dirette o sorgenti escluse, anche se il proxy è abilitato nelle impostazioni.
+Indica il percorso utilizzato, non garantisce che il provider risponda correttamente.
 Non esiste un servizio sempre attivo: non servono Termux o un server esterno.
 
 ## Cosa funziona

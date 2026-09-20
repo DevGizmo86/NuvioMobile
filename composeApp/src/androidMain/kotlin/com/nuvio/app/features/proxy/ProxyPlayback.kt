@@ -21,7 +21,11 @@ internal object ProxyPreferences {
     fun mode(context: Context): String = preferences(context).getString("mode", "off") ?: "off"
 }
 
-internal data class ProxyPlayback(val videoUrl: String, val audioUrl: String?)
+internal data class ProxyPlayback(
+    val videoUrl: String,
+    val audioUrl: String?,
+    val proxyActive: Boolean = false,
+)
 
 /** Keeps the session across engine fallback and disposes it on source change or player exit. */
 @Composable
@@ -59,6 +63,7 @@ internal fun rememberProxyPlayback(
                         url.toHttpUrlOrNull()?.let(proxy::route) ?: url
                     } else url
                 },
+                proxyActive = true,
             )
             awaitCancellation()
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
