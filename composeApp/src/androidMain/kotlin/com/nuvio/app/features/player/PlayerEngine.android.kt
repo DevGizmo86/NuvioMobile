@@ -132,10 +132,14 @@ actual fun PlatformPlayerSurface(
         mutableStateOf(playerSettings.androidPlaybackEngine.initialAndroidEngine())
     }
 
+    val proxyPlayback = com.nuvio.app.features.proxy.rememberProxyPlayback(
+        sourceUrl, sourceAudioUrl, sourceHeaders, streamType, useYoutubeChunkedPlayback, onError,
+    ) ?: return
+
     when (activeEngine) {
         ResolvedAndroidPlaybackEngine.ExoPlayer -> ExoPlayerSurface(
-            sourceUrl = sourceUrl,
-            sourceAudioUrl = sourceAudioUrl,
+            sourceUrl = proxyPlayback.videoUrl,
+            sourceAudioUrl = proxyPlayback.audioUrl,
             sourceHeaders = sourceHeaders,
             sourceResponseHeaders = sourceResponseHeaders,
             externalSubtitles = externalSubtitles,
@@ -170,8 +174,8 @@ actual fun PlatformPlayerSurface(
                 }
             }
             LibmpvPlayerSurface(
-                sourceUrl = sourceUrl,
-                sourceAudioUrl = sourceAudioUrl,
+                sourceUrl = proxyPlayback.videoUrl,
+                sourceAudioUrl = proxyPlayback.audioUrl,
                 sourceHeaders = sourceHeaders,
                 externalSubtitles = externalSubtitles,
                 modifier = modifier,

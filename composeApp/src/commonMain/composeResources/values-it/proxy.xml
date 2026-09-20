@@ -1,0 +1,8 @@
+<resources>
+    <string name="proxy_title">Proxy integrato</string>
+    <string name="proxy_description">Funziona sul dispositivo mentre il player interno è aperto. Si avvia automaticamente alla riproduzione di uno stream compatibile.</string>
+    <string name="proxy_off">Disattivato</string>
+    <string name="proxy_hls">Automatico — stream HLS</string>
+    <string name="proxy_all">Stream HTTP — HLS e file diretti</string>
+    <string name="proxy_limitations">Sperimentale. Si applica alla prossima riproduzione. Non include estrazione dai siti, riscrittura DASH, casting o player esterni.</string>
+</resources>
