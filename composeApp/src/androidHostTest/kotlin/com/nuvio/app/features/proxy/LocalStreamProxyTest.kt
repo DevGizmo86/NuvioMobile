@@ -9,6 +9,8 @@ import java.io.Closeable
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 class LocalStreamProxyTest {
@@ -98,6 +100,24 @@ video/list.m3u8?q=2
                     assertEquals(200, it.code)
                     assertEquals("segment", it.body!!.string())
                 }
+            }
+        }
+    }
+
+    @Test fun reportsAccessRejectionOnceSoResolverCanRenew() {
+        Origin { _, _ -> response("expired", status = 403) }.use { origin ->
+            val statuses = CopyOnWriteArrayList<Int>()
+            val signal = CountDownLatch(1)
+            LocalStreamProxy(
+                (origin.url + "/expired").toHttpUrl(),
+                emptyMap(),
+                onUpstreamAccessRejected = { status -> statuses += status; signal.countDown() },
+            ).use { proxy ->
+                repeat(2) {
+                    client.newCall(Request.Builder().url(proxy.playbackUrl).build()).execute().close()
+                }
+                assertTrue(signal.await(2, TimeUnit.SECONDS))
+                assertEquals(listOf(403), statuses)
             }
         }
     }

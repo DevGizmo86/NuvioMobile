@@ -121,8 +121,13 @@ aprire Big Buck Bunny attraverso lo stesso collegamento. Permette di distinguere
 problemi del collegamento da quelli del servizio del provider. Il vecchio pulsante
 **Prova stream HLS** continua a testare il proxy senza coinvolgere plugin.
 
-Le credenziali vengono richieste all’apertura della fonte. Questa versione non
-rinnova una sessione già in riproduzione dopo la scadenza: uscire e riaprire la fonte.
+Le credenziali vengono richieste all’apertura della fonte. Se una risorsa a monte
+risponde 401, 403 o 410, il proxy segnala la scadenza al collegamento resolver:
+Nuvio richiede nuove credenziali, crea una nuova sessione locale e aggiorna la
+sorgente del player. Le segnalazioni simultanee vengono accorpate e limitate a un
+tentativo ogni 10 secondi. Il rinnovo riporta un canale live al margine in diretta.
+Timeout, rallentamenti, 404 e chiusure di connessione non attivano il rinnovo:
+non dimostrano che una credenziale sia scaduta e possono dipendere dalla fonte.
 Non supporta questi URL in casting, player esterni o download, né in build Play Store
 senza runtime plugin. La compatibilità live con ogni provider va provata sul dispositivo.
 

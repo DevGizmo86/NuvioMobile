@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -63,12 +64,15 @@ internal fun rememberProxyPlayback(
                 reportError(resolverDisabledError)
                 return@LaunchedEffect
             }
-            val resolved = if (needsResolver) {
-                val plugins = PluginRepository.getEnabledScrapersForType("resolver")
-                if (plugins.isEmpty()) {
-                    reportError(resolverMissingError)
-                    return@LaunchedEffect
+            val plugins = if (needsResolver) {
+                PluginRepository.getEnabledScrapersForType("resolver").also {
+                    if (it.isEmpty()) {
+                        reportError(resolverMissingError)
+                        return@LaunchedEffect
+                    }
                 }
+            } else emptyList()
+            suspend fun resolveSource(): ResolvedProxySource = if (needsResolver) {
                 PlaybackResolver.resolve(sourceUrl, plugins.map { plugin ->
                     { request: String ->
                         PluginRepository.executeScraper(plugin, request, "resolver", null, null)
@@ -78,27 +82,47 @@ internal fun rememberProxyPlayback(
                     }
                 })
             } else ResolvedProxySource(sourceUrl, headers, streamType)
-            // Assignment inside the IO block makes cancellation during startup safe.
-            withContext(Dispatchers.IO) {
-                session = LocalStreamProxy(
-                    resolved.url.toHttpUrl(), resolved.headers,
-                    forceHls = LocalStreamProxy.shouldProxy(resolved.url, resolved.streamType, allHttp = false),
+
+            val refreshRequests = Channel<Int>(Channel.CONFLATED)
+            fun createSession(resolved: ResolvedProxySource): LocalStreamProxy = LocalStreamProxy(
+                resolved.url.toHttpUrl(),
+                resolved.headers,
+                forceHls = LocalStreamProxy.shouldProxy(resolved.url, resolved.streamType, allHttp = false),
+                onUpstreamAccessRejected = if (needsResolver) {
+                    { status -> refreshRequests.trySend(status) }
+                } else null,
+            )
+            fun publish(proxy: LocalStreamProxy, resolved: ResolvedProxySource) {
+                playback = ProxyPlayback(
+                    proxy.playbackUrl,
+                    audioUrl?.let { url ->
+                        if (LocalStreamProxy.shouldProxy(url, null, allHttp = true)) {
+                            url.toHttpUrlOrNull()?.let(proxy::route) ?: url
+                        } else url
+                    },
+                    proxyActive = true,
+                    // Source headers are applied upstream by the proxy, never sent to loopback.
+                    playerHeaders = emptyMap(),
+                    streamType = resolved.streamType,
                 )
             }
-            val proxy = checkNotNull(session)
-            playback = ProxyPlayback(
-                proxy.playbackUrl,
-                audioUrl?.let { url ->
-                    if (LocalStreamProxy.shouldProxy(url, null, allHttp = true)) {
-                        url.toHttpUrlOrNull()?.let(proxy::route) ?: url
-                    } else url
-                },
-                proxyActive = true,
-                // Source headers are applied upstream by the proxy, never sent to loopback.
-                playerHeaders = emptyMap(),
-                streamType = resolved.streamType,
-            )
-            awaitCancellation()
+
+            var resolved = resolveSource()
+            // Assignment inside the IO block makes cancellation during startup safe.
+            session = withContext(Dispatchers.IO) { createSession(resolved) }
+            publish(checkNotNull(session), resolved)
+
+            if (!needsResolver) awaitCancellation()
+            while (true) {
+                refreshRequests.receive()
+                val refreshed = resolveSource()
+                val replacement = withContext(Dispatchers.IO) { createSession(refreshed) }
+                val previous = session
+                session = replacement
+                resolved = refreshed
+                publish(replacement, resolved)
+                withContext(Dispatchers.IO) { previous?.close() }
+            }
         } catch (_: TimeoutCancellationException) {
             reportError(resolverFailedError)
         } catch (cancelled: kotlinx.coroutines.CancellationException) {

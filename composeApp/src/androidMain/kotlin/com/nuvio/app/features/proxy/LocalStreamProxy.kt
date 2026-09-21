@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 
 /** One loopback-only server per playback. No arbitrary destination URLs are accepted over HTTP. */
@@ -27,12 +28,14 @@ internal class LocalStreamProxy(
     private val source: HttpUrl,
     private val headers: Map<String, String>,
     private val forceHls: Boolean = false,
+    private val onUpstreamAccessRejected: ((Int) -> Unit)? = null,
 ) : Closeable {
     private val closed = AtomicBoolean(false)
     private val routes = LinkedHashMap<String, HttpUrl>(16, 0.75f, true)
     private val reverseRoutes = HashMap<HttpUrl, String>()
     private val sockets = ConcurrentHashMap.newKeySet<Socket>()
     private val calls = ConcurrentHashMap.newKeySet<Call>()
+    private val lastAccessRejectionSignalMs = AtomicLong(0L)
     private val workers = ThreadPoolExecutor(0, 8, 30, TimeUnit.SECONDS, ArrayBlockingQueue(32)) { task ->
         Thread(task, "nuvio-proxy-request").apply { isDaemon = true }
     }.apply { corePoolSize = 4 }
@@ -159,6 +162,9 @@ internal class LocalStreamProxy(
             try {
                 if (closed.get()) throw IOException("Session closed")
                 call.execute().use { response ->
+                    if (response.code in accessRejectionCodes) {
+                        signalAccessRejection(response.code)
+                    }
                     val body = response.body
                     val mime = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
                     val isManifest = knownManifest || mime in hlsMimeTypes ||
@@ -215,7 +221,22 @@ internal class LocalStreamProxy(
         synchronized(this) { routes.clear(); reverseRoutes.clear() }
     }
 
+    private fun signalAccessRejection(status: Int) {
+        val callback = onUpstreamAccessRejected ?: return
+        val now = System.currentTimeMillis()
+        while (true) {
+            val previous = lastAccessRejectionSignalMs.get()
+            if (now - previous < ACCESS_REJECTION_COOLDOWN_MS) return
+            if (lastAccessRejectionSignalMs.compareAndSet(previous, now)) {
+                callback(status)
+                return
+            }
+        }
+    }
+
     companion object {
+        private const val ACCESS_REJECTION_COOLDOWN_MS = 10_000L
+        private val accessRejectionCodes = setOf(401, 403, 410)
         private val hlsMimeTypes = setOf("application/vnd.apple.mpegurl", "application/x-mpegurl", "audio/mpegurl", "audio/x-mpegurl")
         private val sensitiveHeaders = setOf("authorization", "cookie")
         private val blockedHeaders = setOf("host", "connection", "content-length", "transfer-encoding", "accept-encoding", "range", "if-range", "proxy-authorization")
