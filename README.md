@@ -43,9 +43,11 @@ salvata, stampata nei log o modificata. Non si inviano IP inventati. La firma
 dell’API non viene passata agli host dei segmenti video.
 
 Un 401/403 durante la risoluzione comporta un solo nuovo tentativo con una firma
-appena ottenuta. Se una sessione già in riproduzione scade, uscire e riaprire la
-fonte: **il rinnovo trasparente durante la riproduzione non è implementato**.
-Il cambiamento di IP/rete può richiedere la stessa operazione.
+appena ottenuta. Durante la riproduzione, la build Nuvio con rinnovo automatico
+intercetta 401, 403 e 410 dal server video, richiama questo plugin e sostituisce la
+sessione locale. Il player riparte automaticamente; un canale live torna al margine
+in diretta. Rallentamenti, timeout, 404 e chiusure senza uno di questi codici non
+attivano il rinnovo, perché non provano che la credenziale sia scaduta.
 
 Il plugin non include solver browser, worker remoti o fallback che aggirino il
 rifiuto del provider. La compatibilità con il servizio reale richiede una prova
