@@ -1,0 +1,37 @@
+{
+  "name": "Nuvio Local Resolvers",
+  "version": "0.1.0",
+  "description": "Resolver locali per il fork Nuvio con proxy integrato. Richiede il player interno Android.",
+  "scrapers": [
+    {
+      "id": "vavoo-local-resolver",
+      "name": "Vavoo — risoluzione locale",
+      "description": "Risolve gli URL proxy di TVvoo sul dispositivo, con credenziali temporanee richieste a ogni apertura.",
+      "version": "0.1.0",
+      "filename": "vavoo.js",
+      "supportedTypes": [
+        "resolver"
+      ],
+      "supportedPlatforms": [
+        "android"
+      ],
+      "supportsExternalPlayer": false,
+      "enabled": true
+    },
+    {
+      "id": "resolver-diagnostic",
+      "name": "Test resolver — Big Buck Bunny",
+      "description": "Verifica il collegamento ai plugin tramite Prova plugin di risoluzione nelle impostazioni proxy.",
+      "version": "0.1.0",
+      "filename": "diagnostic.js",
+      "supportedTypes": [
+        "resolver"
+      ],
+      "supportedPlatforms": [
+        "android"
+      ],
+      "supportsExternalPlayer": false,
+      "enabled": true
+    }
+  ]
+}

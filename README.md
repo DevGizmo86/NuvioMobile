@@ -1,55 +1,67 @@
-<div align="center">
+# Nuvio Local Resolvers
 
-  <img src="https://nuvio.tv/assets/nuvio-app-logo-wordmark.webp" alt="Nuvio" width="320" />
+Plugin JavaScript installabili separatamente per il fork Android
+[DevGizmo86/NuvioMobile](https://github.com/DevGizmo86/NuvioMobile/tree/feature/integrated-proxy).
+Questo ramo contiene solo i plugin: **non vengono inclusi nell’APK**.
+Richiede la nuova build con collegamento ai resolver; l’app ufficiale e le vecchie
+build del proxy non implementano questo collegamento.
 
-  <p>
-    A free, open-source media app for your phone, your desktop, and the TV you already own.
-    <br />
-    Bring your own sources. Nuvio turns them into a library with artwork, ratings, subtitles, and your place saved on every screen.
-  </p>
+## Installazione
 
-  [Website](https://nuvio.tv) · [GitHub releases](https://github.com/NuvioMedia/NuvioMobile/releases/latest) · [Support Nuvio](https://nuvio.tv/support)
+1. Installare la build Android full del ramo `feature/integrated-proxy`.
+2. Nuvio → Impostazioni → Plugin → aggiungere questo repository:
 
-</div>
+   `https://raw.githubusercontent.com/DevGizmo86/NuvioMobile/resolver-plugins/manifest.json`
 
-## Get Nuvio Mobile
+3. Abilitare i plugin nel profilo in uso, compresi **Vavoo — risoluzione locale**
+   e **Test resolver — Big Buck Bunny**.
+4. Impostazioni → Riproduzione → Proxy integrato → **Automatico**.
+5. Toccare **Prova plugin di risoluzione**: deve partire Big Buck Bunny con il badge
+   **Proxy attivo**. Questo verifica il collegamento ai plugin, non il servizio Vavoo.
 
-- [Android on Google Play](https://play.google.com/store/apps/details?id=com.nuvio.app)
-- [Android APK](https://github.com/NuvioMedia/NuvioMobile/releases/latest)
-- iOS via AltStore or SideStore: add [this source URL](https://raw.githubusercontent.com/NuvioMedia/NuvioMobile/cmp-rewrite/store.json) in the app's Sources section, then install Nuvio.
+## TVvoo
 
-## Build from source
+Nella configurazione dell’addon:
 
-```bash
-git clone https://github.com/NuvioMedia/NuvioMobile.git
-cd NuvioMobile
-```
+- Tipo proxy: **EasyProxy** (compatibile anche il formato Mediaflow con host Vavoo).
+- Proxy URL: `https://nuvio-resolver.invalid`
+- Password proxy: `nuvio` (se richiesta dal form; è un segnaposto, non una credenziale).
+- Salvare la configurazione e aggiornare/reinstallare l’addon in Nuvio.
+- Aprire un canale e scegliere la fonte **Proxy**, usando il player interno.
 
-### Android
+L’indirizzo `.invalid` è un marcatore intercettato da Nuvio. Non è un sito da aprire
+nel browser, un servizio LAN o un URL utilizzabile in Stremio, casting o altri player.
+TVvoo incorpora il marcatore nell’URL della fonte senza contattarlo. Eventuali test
+di raggiungibilità del form possono quindi segnalarlo come non raggiungibile.
+Le fonti Clean o i vecchi URL di proxy remoti non vengono intercettati.
 
-Android development requires Android Studio and the Android SDK.
+## Credenziali temporanee
 
-```bash
-./gradlew :androidApp:assembleFullDebug
-```
+Il plugin richiede una nuova firma dal dispositivo all’apertura di ogni fonte,
+poi risolve l’URL tramite il provider. La firma rimane in memoria, non viene
+salvata, stampata nei log o modificata. Non si inviano IP inventati. La firma
+dell’API non viene passata agli host dei segmenti video.
 
-### iOS
+Un 401/403 durante la risoluzione comporta un solo nuovo tentativo con una firma
+appena ottenuta. Se una sessione già in riproduzione scade, uscire e riaprire la
+fonte: **il rinnovo trasparente durante la riproduzione non è implementato**.
+Il cambiamento di IP/rete può richiedere la stessa operazione.
 
-iOS development requires macOS and Xcode.
+Il plugin non include solver browser, worker remoti o fallback che aggirino il
+rifiuto del provider. La compatibilità con il servizio reale richiede una prova
+sul dispositivo: i test automatici usano risposte simulate.
 
-```bash
-env NUVIO_IOS_DISTRIBUTION=full xcodebuild \
-  -project iosApp/iosApp.xcodeproj \
-  -scheme iosApp \
-  -configuration Debug \
-  -sdk iphonesimulator \
-  -derivedDataPath build/ios-derived-full-simulator \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-```
+## Sviluppo e verifica
 
-The shared app is built with Kotlin Multiplatform and Compose Multiplatform.
+`getStreams(requestUrl, "resolver")` riceve l’URL completo dell’addon e restituisce
+una lista di risultati `{url, headers?, type?}`. Restituire `[]` per richieste non
+gestite. Sono accettati stream HTTP(S) HLS e file diretti; DASH non è supportato.
+Usare `type: "hls"` solo se il risultato è effettivamente una playlist HLS.
+Il motore Nuvio applica un timeout complessivo di 45 secondi.
 
-## License
+Eseguire: `node --test tests/*.test.cjs`.
 
-[GNU General Public License v3.0](./LICENSE)
+Il formato TVvoo e il protocollo di risoluzione sono stati verificati nel sorgente
+pubblico [TVvoo](https://github.com/qwertyuiop8899/tvvoo), in `src/proxy/build.ts`
+e `src/addon.ts`. Questa è un’implementazione indipendente del plugin; endpoint
+e protocollo del provider possono cambiare.
