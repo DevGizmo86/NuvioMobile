@@ -4,8 +4,14 @@
     <string name="proxy_off">Off</string>
     <string name="proxy_hls">Automatic — HLS streams</string>
     <string name="proxy_all">HTTP streams — HLS and direct files</string>
-    <string name="proxy_limitations">Experimental. Applies to the next playback. No website extraction, DASH rewriting, casting or external-player support.</string>
+    <string name="proxy_limitations">Experimental. Applies to the next playback. Provider resolution requires a separate plugin. No DASH rewriting, casting or external-player support.</string>
     <string name="proxy_active">Proxy active</string>
     <string name="proxy_test_button">Test HLS stream</string>
     <string name="proxy_test_description">Opens Big Buck Bunny in the internal player using the selected proxy mode. Compare Off with Automatic: the Proxy active badge appears only when the proxy is used. This public test stream uses your internet connection.</string>
+    <string name="proxy_resolver_description">For resolver plugins, use the URL below in your addon proxy settings. Install and enable a compatible plugin first. Requires the full Android build, an enabled proxy and the internal player.</string>
+    <string name="proxy_resolver_disabled">Enable the integrated proxy in Playback settings to use this source.</string>
+    <string name="proxy_resolver_missing">Install and enable a resolver plugin in this profile. Resolver plugins require the full Android build.</string>
+    <string name="proxy_resolver_failed">The resolver could not prepare this stream. Check the plugin, connection and addon configuration, then reopen the source to request fresh credentials.</string>
+    <string name="proxy_start_failed">Unable to start the integrated proxy. Disable it in Playback settings and retry.</string>
+    <string name="proxy_resolver_test">Test resolver plugin</string>
 </resources>

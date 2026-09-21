@@ -30,6 +30,9 @@ java -cp "$PROXY_TEST_CLASSPATH" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler \
   -no-stdlib -no-reflect -classpath "$PROXY_TEST_CLASSPATH" -d "$PROXY_TEST_CACHE/tests.jar" \
   composeApp/src/androidMain/kotlin/com/nuvio/app/features/proxy/HlsManifestRewriter.kt \
   composeApp/src/androidMain/kotlin/com/nuvio/app/features/proxy/LocalStreamProxy.kt \
+  composeApp/src/androidMain/kotlin/com/nuvio/app/features/proxy/PlaybackResolver.kt \
+  composeApp/src/androidHostTest/kotlin/com/nuvio/app/features/proxy/PlaybackResolverTest.kt \
   composeApp/src/androidHostTest/kotlin/com/nuvio/app/features/proxy/LocalStreamProxyTest.kt
 java -cp "$PROXY_TEST_CLASSPATH:$PROXY_TEST_CACHE/tests.jar" org.junit.runner.JUnitCore \
-  com.nuvio.app.features.proxy.LocalStreamProxyTest
+  com.nuvio.app.features.proxy.LocalStreamProxyTest \
+  com.nuvio.app.features.proxy.PlaybackResolverTest

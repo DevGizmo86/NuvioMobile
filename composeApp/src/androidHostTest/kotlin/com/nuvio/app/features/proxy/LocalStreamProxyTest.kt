@@ -85,6 +85,23 @@ video/list.m3u8?q=2
         }
     }
 
+    @Test fun appliesProviderOriginUpstreamWithoutSendingItToLoopback() {
+        Origin { _, headers ->
+            assertEquals("https://provider.example", headers["origin"])
+            assertEquals("provider-agent", headers["user-agent"])
+            response("segment")
+        }.use { origin ->
+            LocalStreamProxy((origin.url + "/stream").toHttpUrl(), mapOf(
+                "Origin" to "https://provider.example", "User-Agent" to "provider-agent",
+            )).use { proxy ->
+                client.newCall(Request.Builder().url(proxy.playbackUrl).build()).execute().use {
+                    assertEquals(200, it.code)
+                    assertEquals("segment", it.body!!.string())
+                }
+            }
+        }
+    }
+
     @Test fun forwardsRangesAndPreservesPartialResponse() {
         Origin { _, headers ->
             assertEquals("bytes=2-4", headers["range"])

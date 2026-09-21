@@ -1,5 +1,7 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.foundation.text.selection.SelectionContainer
+import com.nuvio.app.features.proxy.PlaybackResolver
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -42,6 +44,11 @@ internal actual fun IntegratedProxySettings(isTablet: Boolean) {
                     Text(stringResource(Res.string.proxy_test_button))
                 }
                 Text(stringResource(Res.string.proxy_test_description))
+                Text(stringResource(Res.string.proxy_resolver_description))
+                SelectionContainer { Text(PlaybackResolver.BASE_URL) }
+                Button(onClick = AppDeepLinkRepository::openHlsResolverTest) {
+                    Text(stringResource(Res.string.proxy_resolver_test))
+                }
                 Text(stringResource(Res.string.proxy_limitations))
             }
         }

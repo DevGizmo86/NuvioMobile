@@ -146,10 +146,10 @@ actual fun PlatformPlayerSurface(
             ResolvedAndroidPlaybackEngine.ExoPlayer -> ExoPlayerSurface(
                 sourceUrl = proxyPlayback.videoUrl,
                 sourceAudioUrl = proxyPlayback.audioUrl,
-                sourceHeaders = sourceHeaders,
+                sourceHeaders = proxyPlayback.playerHeaders,
                 sourceResponseHeaders = sourceResponseHeaders,
                 externalSubtitles = externalSubtitles,
-                streamType = streamType,
+                streamType = proxyPlayback.streamType,
                 useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
                 modifier = Modifier.matchParentSize(),
                 playWhenReady = playWhenReady,
@@ -182,7 +182,7 @@ actual fun PlatformPlayerSurface(
                 LibmpvPlayerSurface(
                     sourceUrl = proxyPlayback.videoUrl,
                     sourceAudioUrl = proxyPlayback.audioUrl,
-                    sourceHeaders = sourceHeaders,
+                    sourceHeaders = proxyPlayback.playerHeaders,
                     externalSubtitles = externalSubtitles,
                     modifier = Modifier.matchParentSize(),
                     playWhenReady = playWhenReady,

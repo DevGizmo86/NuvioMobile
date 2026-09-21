@@ -4,8 +4,14 @@
     <string name="proxy_off">Disattivato</string>
     <string name="proxy_hls">Automatico — stream HLS</string>
     <string name="proxy_all">Stream HTTP — HLS e file diretti</string>
-    <string name="proxy_limitations">Sperimentale. Si applica alla prossima riproduzione. Non include estrazione dai siti, riscrittura DASH, casting o player esterni.</string>
+    <string name="proxy_limitations">Sperimentale. Si applica alla prossima riproduzione. La risoluzione dei provider richiede un plugin separato. Non include riscrittura DASH, casting o player esterni.</string>
     <string name="proxy_active">Proxy attivo</string>
     <string name="proxy_test_button">Prova stream HLS</string>
     <string name="proxy_test_description">Apre Big Buck Bunny nel player interno con la modalità proxy selezionata. Confronta Disattivato e Automatico: il badge Proxy attivo compare solo quando viene usato il proxy. Lo stream pubblico di prova utilizza la connessione internet.</string>
+    <string name="proxy_resolver_description">Per i plugin di risoluzione, usa questo URL nelle impostazioni proxy dell’addon. Prima installa e abilita un plugin compatibile. Richiede la versione Android completa, il proxy abilitato e il player interno.</string>
+    <string name="proxy_resolver_disabled">Abilita il proxy integrato nelle impostazioni di riproduzione per usare questa fonte.</string>
+    <string name="proxy_resolver_missing">Installa e abilita un plugin di risoluzione in questo profilo. Serve la versione Android completa.</string>
+    <string name="proxy_resolver_failed">Il plugin non ha risolto lo stream. Controlla plugin, connessione e configurazione dell’addon, poi riapri la fonte per richiedere nuove credenziali.</string>
+    <string name="proxy_start_failed">Impossibile avviare il proxy integrato. Disabilitalo nelle impostazioni di riproduzione e riprova.</string>
+    <string name="proxy_resolver_test">Prova plugin di risoluzione</string>
 </resources>

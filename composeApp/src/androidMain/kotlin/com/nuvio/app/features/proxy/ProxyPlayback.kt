@@ -1,6 +1,10 @@
 package com.nuvio.app.features.proxy
 
 import android.content.Context
+import com.nuvio.app.features.plugins.PluginRepository
+import kotlinx.coroutines.TimeoutCancellationException
+import nuvio.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +29,8 @@ internal data class ProxyPlayback(
     val videoUrl: String,
     val audioUrl: String?,
     val proxyActive: Boolean = false,
+    val playerHeaders: Map<String, String> = emptyMap(),
+    val streamType: String? = null,
 )
 
 /** Keeps the session across engine fallback and disposes it on source change or player exit. */
@@ -39,20 +45,44 @@ internal fun rememberProxyPlayback(
 ): ProxyPlayback? {
     val context = LocalContext.current
     val mode = remember(sourceUrl) { ProxyPreferences.mode(context) }
+    val needsResolver = PlaybackResolver.isRequest(sourceUrl)
+    val resolverDisabledError = stringResource(Res.string.proxy_resolver_disabled)
+    val resolverMissingError = stringResource(Res.string.proxy_resolver_missing)
+    val resolverFailedError = stringResource(Res.string.proxy_resolver_failed)
+    val proxyFailedError = stringResource(Res.string.proxy_start_failed)
     val enabled = mode != "off" && !youtubeChunked &&
         LocalStreamProxy.shouldProxy(sourceUrl, streamType, allHttp = mode == "all")
-    if (!enabled) return ProxyPlayback(sourceUrl, audioUrl)
+    if (!enabled && !needsResolver) return ProxyPlayback(sourceUrl, audioUrl, playerHeaders = headers, streamType = streamType)
 
     var playback by remember(sourceUrl, audioUrl, headers, streamType, mode) { mutableStateOf<ProxyPlayback?>(null) }
     val reportError by rememberUpdatedState(onError)
     LaunchedEffect(sourceUrl, audioUrl, headers, streamType, mode) {
         var session: LocalStreamProxy? = null
         try {
+            if (needsResolver && (mode == "off" || youtubeChunked)) {
+                reportError(resolverDisabledError)
+                return@LaunchedEffect
+            }
+            val resolved = if (needsResolver) {
+                val plugins = PluginRepository.getEnabledScrapersForType("resolver")
+                if (plugins.isEmpty()) {
+                    reportError(resolverMissingError)
+                    return@LaunchedEffect
+                }
+                PlaybackResolver.resolve(sourceUrl, plugins.map { plugin ->
+                    { request: String ->
+                        PluginRepository.executeScraper(plugin, request, "resolver", null, null)
+                            .getOrThrow().map { result ->
+                                ResolvedProxySource(result.url, result.headers.orEmpty(), result.type)
+                            }
+                    }
+                })
+            } else ResolvedProxySource(sourceUrl, headers, streamType)
             // Assignment inside the IO block makes cancellation during startup safe.
             withContext(Dispatchers.IO) {
                 session = LocalStreamProxy(
-                    sourceUrl.toHttpUrl(), headers,
-                    forceHls = LocalStreamProxy.shouldProxy(sourceUrl, streamType, allHttp = false),
+                    resolved.url.toHttpUrl(), resolved.headers,
+                    forceHls = LocalStreamProxy.shouldProxy(resolved.url, resolved.streamType, allHttp = false),
                 )
             }
             val proxy = checkNotNull(session)
@@ -64,12 +94,17 @@ internal fun rememberProxyPlayback(
                     } else url
                 },
                 proxyActive = true,
+                // Source headers are applied upstream by the proxy, never sent to loopback.
+                playerHeaders = emptyMap(),
+                streamType = resolved.streamType,
             )
             awaitCancellation()
+        } catch (_: TimeoutCancellationException) {
+            reportError(resolverFailedError)
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            reportError("Unable to start the integrated proxy. Disable it in Playback settings and retry.")
+            reportError(if (needsResolver) resolverFailedError else proxyFailedError)
         } finally {
             withContext(NonCancellable + Dispatchers.IO) { session?.close() }
         }

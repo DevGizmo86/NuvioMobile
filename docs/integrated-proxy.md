@@ -1,4 +1,4 @@
-# Proxy integrato Android — prima versione
+# Proxy integrato Android e plugin di risoluzione
 
 Questo ramo aggiunge un proxy di riproduzione locale a Nuvio Mobile Android.
 È il primo nucleo della riscrittura prevista: **non è ancora una replica completa di EasyProxy**.
@@ -47,9 +47,9 @@ come un film della libreria per il salvataggio della cronologia.
 
 ## Limiti espliciti
 
-- Nessun extractor di siti, browser/solver, conversione DASH, DRM aggiuntivo o DVR.
+- Risoluzione dei provider tramite plugin separati; nessun browser/solver, conversione DASH, DRM aggiuntivo o DVR.
 - Non converte gli URL di un EasyProxy remoto in richieste locali equivalenti.
-  Serve un URL video/manifest già risolto dall'addon o dal plugin.
+  Sono intercettati solo gli URL marcati per il resolver locale (vedi sotto).
 - DASH riconoscibile dal tipo o dall'estensione `.mpd` viene lasciato diretto.
   Non usare la modalità HTTP per DASH opaco non dichiarato: il manifest non viene riscritto.
 - HLS con variabili `EXT-X-DEFINE` non è supportato; le variabili non risolte
@@ -96,6 +96,36 @@ Prova su Pixel prima di considerare la funzione stabile:
 4. Verificare Picture-in-Picture, background/ritorno all'app e cambio rete.
 5. In modalità HTTP, provare seek su MP4 e un HLS con URL opaco.
 
-Gli extractor specifici di EasyProxy sono il passo successivo e richiedono test
-per ciascun provider. La pubblicazione di questo ramo non implica compatibilità
-con tutti gli addon che oggi usano EasyProxy.
+## Plugin di risoluzione (Android full)
+
+L’app riconosce esclusivamente il marcatore `https://nuvio-resolver.invalid`:
+non effettua richieste di rete a questo dominio. Invoca i plugin abilitati del
+profilo con `supportedTypes: ["resolver"]`, passando l’URL completo come primo
+argomento di `getStreams(requestUrl, "resolver")`. Non esegue ricerche TMDB e non
+attende la ripresa delle ricerche fonti in background. Timeout complessivo: 45 s.
+I normali URL e i proxy remoti mantengono il percorso originale.
+
+Il primo risultato HTTP(S) valido `{url, headers?, type?}` viene riprodotto dal
+proxy locale. I risultati ricorsivi, loopback, DASH o con credenziali URL incorporate
+vengono rifiutati. Gli header del risultato vengono applicati solo a monte dal proxy;
+le credenziali dell’API devono essere gestite dal plugin, senza passarle al player.
+Il proxy deve essere abilitato anche per le fonti marcate; in caso contrario viene
+mostrato un errore, senza tentare di contattare il marcatore.
+
+I plugin sono pubblicati separatamente sul ramo `resolver-plugins` del fork,
+non incorporati nell’APK. Installazione e configurazione TVvoo:
+[README dei plugin](https://github.com/DevGizmo86/NuvioMobile/blob/resolver-plugins/README.md).
+
+Il pulsante **Prova plugin di risoluzione** usa un plugin diagnostico separato per
+aprire Big Buck Bunny attraverso lo stesso collegamento. Permette di distinguere
+problemi del collegamento da quelli del servizio del provider. Il vecchio pulsante
+**Prova stream HLS** continua a testare il proxy senza coinvolgere plugin.
+
+Le credenziali vengono richieste all’apertura della fonte. Questa versione non
+rinnova una sessione già in riproduzione dopo la scadenza: uscire e riaprire la fonte.
+Non supporta questi URL in casting, player esterni o download, né in build Play Store
+senza runtime plugin. La compatibilità live con ogni provider va provata sul dispositivo.
+
+I test isolati includono selezione dei resolver, validazione dei risultati,
+cancellazione e header Origin applicati upstream. Il test HLS di base è già stato
+confermato sul dispositivo dall’utente; il nuovo percorso plugin richiede una nuova prova.

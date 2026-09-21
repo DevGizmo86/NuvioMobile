@@ -739,11 +739,13 @@ internal fun MainAppContent(
                         AppDeepLinkRepository.markConsumed(deepLink)
                     }
 
-                    AppDeepLink.HlsProxyTest -> {
+                    AppDeepLink.HlsProxyTest, AppDeepLink.HlsResolverTest -> {
                         val launch = PlayerLaunch(
                             profileId = ProfileRepository.activeProfileId,
                             title = "Big Buck Bunny — HLS test",
-                            sourceUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+                            sourceUrl = if (deepLink == AppDeepLink.HlsResolverTest) {
+                                "https://nuvio-resolver.invalid/test.m3u8"
+                            } else "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
                             streamType = "hls",
                             streamTitle = "Big Buck Bunny",
                             providerName = "Mux HLS Test Streams",
