@@ -10,12 +10,16 @@ import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.debrid.DebridSettingsStorage
 import com.nuvio.app.features.details.MetaScreenSettingsStorage
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
+import com.nuvio.app.features.library.LibraryDisplaySettingsRepository
+import com.nuvio.app.features.library.LibraryDisplaySettingsStorage
 import com.nuvio.app.features.mdblist.MdbListMetadataService
 import com.nuvio.app.features.mdblist.MdbListSettingsStorage
 import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.player.PlayerSettingsStorage
 import com.nuvio.app.features.player.PlayerSettingsRepository
+import com.nuvio.app.features.p2p.P2pSettingsRepository
+import com.nuvio.app.features.p2p.P2pSettingsStorage
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.core.ui.CardDepthStyleRepository
 import com.nuvio.app.core.ui.CardDepthStyleStorage
@@ -177,6 +181,12 @@ object ProfileSettingsSync {
         }
     }
 
+    suspend fun flushBeforeSignOut(): Boolean {
+        val settingsSaved = pushCurrentProfileToRemote()
+        val credentialsSaved = ProviderCredentialSync.pushCurrentProfileToRemote()
+        return settingsSaved && credentialsSaved
+    }
+
     @OptIn(FlowPreview::class)
     private fun observeLocalChangesAndPush() {
         val signatureFlows = listOf(
@@ -191,6 +201,7 @@ object ProfileSettingsSync {
             CardDepthStyleRepository.uiState.map { "card_depth_style" },
             PlayerSettingsRepository.uiState.map { "player" },
             StreamBadgeSettingsRepository.uiState.map { "stream_badges" },
+            P2pSettingsRepository.uiState.map { "p2p" },
             DebridSettingsRepository.uiState.map { "debrid" },
             TmdbSettingsRepository.uiState.map { "tmdb" },
             MdbListSettingsRepository.uiState.map { "mdblist" },
@@ -200,6 +211,7 @@ object ProfileSettingsSync {
             TrackingSettingsRepository.uiState.map { "trakt_settings" },
             TraktCommentsSettings.enabled.map { "trakt_comments" },
             EpisodeReleaseNotificationsRepository.uiState.map { "episode_release_alerts" },
+            LibraryDisplaySettingsRepository.uiState.map { "library_display" },
         )
 
         observeJob = scope.launch {
@@ -245,6 +257,7 @@ object ProfileSettingsSync {
                     PlayerSettingsStorage.exportToSyncPayload(),
                 ),
                 streamBadgeSettings = StreamBadgeSettingsStorage.exportToSyncPayload(),
+                p2pSettings = P2pSettingsStorage.exportToSyncPayload(),
                 debridSettings = withoutProfileCredentials(
                     PROFILE_DEBRID_SETTINGS_FEATURE,
                     DebridSettingsStorage.exportToSyncPayload(),
@@ -265,6 +278,7 @@ object ProfileSettingsSync {
                 notificationsSettings = NotificationsSettingsPayload(
                     episodeReleaseAlertsEnabled = EpisodeReleaseNotificationsRepository.uiState.value.isEnabled,
                 ),
+                libraryDisplaySettingsPayload = LibraryDisplaySettingsStorage.loadPayload().orEmpty().trim(),
             ),
         )
     }
@@ -297,6 +311,11 @@ object ProfileSettingsSync {
 
         StreamBadgeSettingsStorage.replaceFromSyncPayload(blob.features.streamBadgeSettings)
         StreamBadgeSettingsRepository.onProfileChanged()
+
+        if (blob.version >= 4) {
+            P2pSettingsStorage.replaceFromSyncPayload(blob.features.p2pSettings)
+            P2pSettingsRepository.onProfileChanged()
+        }
 
         DebridSettingsStorage.replaceFromSyncPayload(
             preservingLocalProfileCredentials(
@@ -342,6 +361,11 @@ object ProfileSettingsSync {
         TraktCommentsSettings.onProfileChanged()
 
         EpisodeReleaseNotificationsRepository.applyFromSyncEnabled(blob.features.notificationsSettings.episodeReleaseAlertsEnabled)
+
+        if (blob.version >= 4) {
+            LibraryDisplaySettingsStorage.savePayload(blob.features.libraryDisplaySettingsPayload)
+            LibraryDisplaySettingsRepository.onProfileChanged()
+        }
     }
 
     private fun ensureRepositoriesLoaded() {
@@ -351,6 +375,7 @@ object ProfileSettingsSync {
         CardDepthStyleRepository.ensureLoaded()
         PlayerSettingsRepository.ensureLoaded()
         StreamBadgeSettingsRepository.ensureLoaded()
+        P2pSettingsRepository.ensureLoaded()
         DebridSettingsRepository.ensureLoaded()
         TmdbSettingsRepository.ensureLoaded()
         MdbListSettingsRepository.ensureLoaded()
@@ -360,6 +385,7 @@ object ProfileSettingsSync {
         TrackingSettingsRepository.ensureLoaded()
         TraktCommentsSettings.ensureLoaded()
         EpisodeReleaseNotificationsRepository.ensureLoaded()
+        LibraryDisplaySettingsRepository.ensureLoaded()
     }
 
     private fun buildSignature(blob: MobileProfileSettingsBlob): String =
@@ -371,7 +397,7 @@ object ProfileSettingsSync {
 
 @Serializable
 private data class MobileProfileSettingsBlob(
-    val version: Int = 3,
+    val version: Int = 4,
     val features: MobileProfileSettingsFeatures = MobileProfileSettingsFeatures(),
 )
 
@@ -383,6 +409,7 @@ private data class MobileProfileSettingsFeatures(
     @SerialName("card_depth_style_settings_payload") val cardDepthStyleSettingsPayload: String = "",
     @SerialName("player_settings") val playerSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("stream_badge_settings") val streamBadgeSettings: JsonObject = JsonObject(emptyMap()),
+    @SerialName("p2p_settings") val p2pSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("debrid_settings") val debridSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("tmdb_settings") val tmdbSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("mdblist_settings") val mdbListSettings: JsonObject = JsonObject(emptyMap()),
@@ -392,6 +419,7 @@ private data class MobileProfileSettingsFeatures(
     @SerialName("trakt_settings_payload") val traktSettingsPayload: String = "",
     @SerialName("trakt_comments_settings") val traktCommentsSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("notifications_settings") val notificationsSettings: NotificationsSettingsPayload = NotificationsSettingsPayload(),
+    @SerialName("library_display_settings_payload") val libraryDisplaySettingsPayload: String = "",
 )
 
 @Serializable
