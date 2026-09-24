@@ -61,6 +61,58 @@ video/list.m3u8?q=2
         assertTrue(rewritten.contains("data:text/plain;base64,AA=="))
     }
 
+    @Test fun inheritsManifestQueryTokensOnlyForSameOriginRelativeResources() {
+        val manifest = """#EXTM3U
+#EXT-X-KEY:METHOD=AES-128,URI="key.bin"
+#EXT-X-MEDIA:TYPE=AUDIO,URI="audio.m3u8?lang=it&token=child"
+segment.ts
+https://cdn.example.net/segment.ts
+//cdn.example.org/segment.ts
+"""
+        val seen = mutableListOf<String>()
+        HlsManifestRewriter.rewrite(
+            manifest,
+            "https://video.example.org/live/master.m3u8?token=parent&expires=123".toHttpUrl(),
+        ) {
+            seen += it.toString()
+            "http://127.0.0.1/r${seen.size}"
+        }
+
+        assertEquals(
+            listOf(
+                "https://video.example.org/live/key.bin?token=parent&expires=123",
+                "https://video.example.org/live/audio.m3u8?lang=it&token=child&expires=123",
+                "https://video.example.org/live/segment.ts?token=parent&expires=123",
+                "https://cdn.example.net/segment.ts",
+                "https://cdn.example.org/segment.ts",
+            ),
+            seen,
+        )
+    }
+
+    @Test fun inheritedManifestTokensReachRelativeSegments() {
+        Origin { line, _ ->
+            when {
+                line.contains(" /live.m3u8?token=abc ") -> response(
+                    "#EXTM3U\n#EXTINF:4,\nseg.ts\n",
+                    "application/vnd.apple.mpegurl",
+                )
+                line.contains(" /seg.ts?token=abc ") -> response("authorized-segment")
+                else -> response("missing token", status = 403)
+            }
+        }.use { origin ->
+            LocalStreamProxy((origin.url + "/live.m3u8?token=abc").toHttpUrl(), emptyMap()).use { proxy ->
+                val segmentUrl = client.newCall(Request.Builder().url(proxy.playbackUrl).build()).execute().use {
+                    it.body!!.string().lines().first { line -> line.startsWith("http") }
+                }
+                client.newCall(Request.Builder().url(segmentUrl).build()).execute().use {
+                    assertEquals(200, it.code)
+                    assertEquals("authorized-segment", it.body!!.string())
+                }
+            }
+        }
+    }
+
     @Test fun followsRedirectAndUsesFinalManifestLocation() {
         Origin { line, _ ->
             when {

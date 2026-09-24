@@ -35,6 +35,8 @@ come un film della libreria per il salvataggio della cronologia.
 
 - Player interni Android ExoPlayer e libmpv.
 - Playlist HLS master/media, URL relativi risolti rispetto all'URL finale dopo redirect.
+- Parametri di firma/token del manifest ereditati dalle risorse HLS relative della
+  stessa origine, senza sovrascrivere valori espliciti e senza propagarli ad altri host.
 - Riferimenti URI a varianti, audio, sottotitoli HLS, chiavi AES e segmenti iniziali.
   Le chiavi vengono inoltrate; la decifratura HLS resta responsabilità del player.
 - Inoltro binario senza ricodifica, GET/HEAD, Range/206 per i file e segmenti.
