@@ -385,6 +385,7 @@ fun MetaDetailsScreen(
         tmdbSettingsUiState.enabled,
         tmdbSettingsUiState.useMoreLikeThis,
         tmdbSettingsUiState.language,
+        mdbListSettings,
     ) {
         if (displayedMeta != null && !uiState.isLoading) {
             MetaDetailsRepository.load(type, id)
@@ -1089,7 +1090,7 @@ fun MetaDetailsScreen(
 
                                 configuredMetaSectionItems(
                                     settings = metaScreenSettingsUiState,
-                                    isMdbListActive = mdbListSettings.enabled && mdbListSettings.hasApiKey,
+                                    isMdbListActive = mdbListSettings.isActive,
                                     meta = meta,
                                     isTablet = isTablet,
                                     contentHorizontalPadding = contentHorizontalPadding,
@@ -2285,6 +2286,7 @@ private fun ConfiguredMetaSections(
                     val sourceLabel = when (meta.moreLikeThisSource) {
                         MoreLikeThisSource.TMDB -> stringResource(Res.string.detail_more_like_this_powered_by_tmdb)
                         MoreLikeThisSource.TRAKT -> stringResource(Res.string.detail_more_like_this_powered_by_trakt)
+                        MoreLikeThisSource.SIMKL -> stringResource(Res.string.detail_more_like_this_powered_by_simkl)
                         null -> null
                     }
                     DetailPosterRailSection(
