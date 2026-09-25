@@ -1,6 +1,11 @@
 package com.nuvio.app.features.player
 
 import android.app.Activity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import com.nuvio.app.features.proxy.ProxyActiveBadge
 import android.content.Context
 import android.content.ContextWrapper
 import android.text.SpannableString
@@ -132,57 +137,70 @@ actual fun PlatformPlayerSurface(
         mutableStateOf(playerSettings.androidPlaybackEngine.initialAndroidEngine())
     }
 
-    when (activeEngine) {
-        ResolvedAndroidPlaybackEngine.ExoPlayer -> ExoPlayerSurface(
-            sourceUrl = sourceUrl,
-            sourceAudioUrl = sourceAudioUrl,
-            sourceHeaders = sourceHeaders,
-            sourceResponseHeaders = sourceResponseHeaders,
-            externalSubtitles = externalSubtitles,
-            streamType = streamType,
-            useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
-            modifier = modifier,
-            playWhenReady = playWhenReady,
-            initialPositionMs = initialPositionMs,
-            initialPositionRequestKey = initialPositionRequestKey,
-            resizeMode = resizeMode,
-            useNativeController = useNativeController,
-            onInitialPositionHandled = onInitialPositionHandled,
-            onControllerReady = onControllerReady,
-            onSnapshot = onSnapshot,
-            onError = { message ->
-                if (message != null && playerSettings.androidPlaybackEngine == AndroidPlaybackEngine.Auto) {
-                    Log.w(TAG, "ExoPlayer failed; falling back to libmpv: $message")
+    val proxyPlayback = com.nuvio.app.features.proxy.rememberProxyPlayback(
+        sourceUrl, sourceAudioUrl, sourceHeaders, streamType, useYoutubeChunkedPlayback, onError,
+    ) ?: return
+
+    Box(modifier = modifier) {
+        when (activeEngine) {
+            ResolvedAndroidPlaybackEngine.ExoPlayer -> ExoPlayerSurface(
+                sourceUrl = proxyPlayback.videoUrl,
+                sourceAudioUrl = proxyPlayback.audioUrl,
+                sourceHeaders = proxyPlayback.playerHeaders,
+                sourceResponseHeaders = sourceResponseHeaders,
+                externalSubtitles = externalSubtitles,
+                streamType = proxyPlayback.streamType,
+                useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
+                modifier = Modifier.matchParentSize(),
+                playWhenReady = playWhenReady,
+                initialPositionMs = initialPositionMs,
+                initialPositionRequestKey = initialPositionRequestKey,
+                resizeMode = resizeMode,
+                useNativeController = useNativeController,
+                onInitialPositionHandled = onInitialPositionHandled,
+                onControllerReady = onControllerReady,
+                onSnapshot = onSnapshot,
+                onError = { message ->
+                    if (message != null && playerSettings.androidPlaybackEngine == AndroidPlaybackEngine.Auto) {
+                        Log.w(TAG, "ExoPlayer failed; falling back to libmpv: $message")
+                        initialPositionRequestKey?.let { key ->
+                            onInitialPositionHandled(key, false)
+                        }
+                        activeEngine = ResolvedAndroidPlaybackEngine.Libmpv
+                        onError(null)
+                    } else {
+                        onError(message)
+                    }
+                },
+            )
+            ResolvedAndroidPlaybackEngine.Libmpv -> {
+                LaunchedEffect(initialPositionRequestKey) {
                     initialPositionRequestKey?.let { key ->
                         onInitialPositionHandled(key, false)
                     }
-                    activeEngine = ResolvedAndroidPlaybackEngine.Libmpv
-                    onError(null)
-                } else {
-                    onError(message)
                 }
-            },
-        )
-        ResolvedAndroidPlaybackEngine.Libmpv -> {
-            LaunchedEffect(initialPositionRequestKey) {
-                initialPositionRequestKey?.let { key ->
-                    onInitialPositionHandled(key, false)
-                }
+                LibmpvPlayerSurface(
+                    sourceUrl = proxyPlayback.videoUrl,
+                    sourceAudioUrl = proxyPlayback.audioUrl,
+                    sourceHeaders = proxyPlayback.playerHeaders,
+                    externalSubtitles = externalSubtitles,
+                    modifier = Modifier.matchParentSize(),
+                    playWhenReady = playWhenReady,
+                    resizeMode = resizeMode,
+                    videoOutput = playerSettings.androidLibmpvVideoOutput,
+                    hardwareDecodingEnabled = playerSettings.androidLibmpvHardwareDecodingEnabled,
+                    yuv420pEnabled = playerSettings.androidLibmpvYuv420pEnabled,
+                    onControllerReady = onControllerReady,
+                    onSnapshot = onSnapshot,
+                    onError = onError,
+                )
             }
-            LibmpvPlayerSurface(
-                sourceUrl = sourceUrl,
-                sourceAudioUrl = sourceAudioUrl,
-                sourceHeaders = sourceHeaders,
-                externalSubtitles = externalSubtitles,
-                modifier = modifier,
-                playWhenReady = playWhenReady,
-                resizeMode = resizeMode,
-                videoOutput = playerSettings.androidLibmpvVideoOutput,
-                hardwareDecodingEnabled = playerSettings.androidLibmpvHardwareDecodingEnabled,
-                yuv420pEnabled = playerSettings.androidLibmpvYuv420pEnabled,
-                onControllerReady = onControllerReady,
-                onSnapshot = onSnapshot,
-                onError = onError,
+        }
+        if (proxyPlayback.proxyActive) {
+            ProxyActiveBadge(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 72.dp, end = 16.dp),
             )
         }
     }

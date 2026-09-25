@@ -19,12 +19,24 @@ internal sealed interface AppDeepLink {
         val manifestUrl: String,
     ) : AppDeepLink
 
+    // Internal request only: no public deep-link URL is registered for this test.
+    data object HlsProxyTest : AppDeepLink
+    data object HlsResolverTest : AppDeepLink
+
     data object Downloads : AppDeepLink
 }
 
 internal object AppDeepLinkRepository {
     private val _pendingDeepLink = MutableStateFlow<AppDeepLink?>(null)
     val pendingDeepLink: StateFlow<AppDeepLink?> = _pendingDeepLink.asStateFlow()
+
+    fun openHlsProxyTest() {
+        _pendingDeepLink.value = AppDeepLink.HlsProxyTest
+    }
+
+    fun openHlsResolverTest() {
+        _pendingDeepLink.value = AppDeepLink.HlsResolverTest
+    }
 
     fun handleUrl(url: String) {
         parseAppDeepLink(url)?.let { deepLink ->

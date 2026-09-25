@@ -32,6 +32,8 @@ import com.nuvio.app.features.player.resolveContentLanguage
 import com.nuvio.app.features.player.sanitizePlaybackHeaders
 import com.nuvio.app.features.player.sanitizePlaybackResponseHeaders
 import com.nuvio.app.features.streams.StreamBehaviorHints
+import com.nuvio.app.features.streams.BrowserStreamResolver
+import com.nuvio.app.features.streams.ResolvedBrowserStream
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamLaunchStore
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
@@ -40,6 +42,7 @@ import com.nuvio.app.features.streams.StreamsScreen
 import com.nuvio.app.features.streams.shouldShowAutoPlayLoading
 import com.nuvio.app.features.streams.shouldUseLandscapeAutoPlayLoading
 import com.nuvio.app.features.streams.StreamsUiState
+import com.nuvio.app.features.streams.isSupportedBrowserStreamUrl
 import com.nuvio.app.navigation.*
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
@@ -53,6 +56,15 @@ private data class PendingP2pStreamOpen(
     val forceExternal: Boolean,
     val forceInternal: Boolean,
     val isAutoPlay: Boolean,
+)
+
+private data class PendingBrowserStreamOpen(
+    val stream: StreamItem,
+    val url: String,
+    val resumePositionMs: Long?,
+    val resumeProgressFraction: Float?,
+    val forceExternal: Boolean,
+    val forceInternal: Boolean,
 )
 
 @Composable
@@ -79,6 +91,7 @@ internal fun StreamDestination(
     var autoPlayNavigationStarted by remember(route.launchId) { mutableStateOf(false) }
     var resolvingDebridStream by rememberSaveable(route.launchId) { mutableStateOf(false) }
     var pendingP2pStreamOpen by remember { mutableStateOf<PendingP2pStreamOpen?>(null) }
+    var pendingBrowserStreamOpen by remember { mutableStateOf<PendingBrowserStreamOpen?>(null) }
     val shouldResolveEpisodeVideoId =
         launch.parentMetaId != null &&
             launch.seasonNumber != null &&
@@ -260,6 +273,81 @@ internal fun StreamDestination(
             resolvedResumeProgressFraction = resolvedResumeProgressFraction,
             replaceStreamRoute = isAutoPlay,
         )
+    }
+
+    fun openResolvedBrowserStream(
+        pending: PendingBrowserStreamOpen,
+        resolved: ResolvedBrowserStream,
+    ) {
+        val requestHeaders = sanitizePlaybackHeaders(resolved.requestHeaders)
+        val responseHeaders = sanitizePlaybackResponseHeaders(resolved.responseHeaders)
+        val streamTitle = resolved.name?.takeIf { it.isNotBlank() } ?: pending.stream.streamLabel
+        val streamSubtitle = resolved.description?.takeIf { it.isNotBlank() } ?: pending.stream.streamSubtitle
+        val bingeGroup = resolved.bingeGroup ?: pending.stream.behaviorHints.bingeGroup
+
+        if (playerSettings.streamReuseLastLinkEnabled) {
+            val cacheKey = StreamLinkCacheRepository.contentKey(
+                type = launch.type,
+                videoId = effectiveVideoId,
+                parentMetaId = launch.parentMetaId,
+                season = launch.seasonNumber,
+                episode = launch.episodeNumber,
+            )
+            StreamLinkCacheRepository.save(
+                contentKey = cacheKey,
+                url = resolved.url,
+                streamName = streamTitle,
+                addonName = pending.stream.addonName,
+                addonId = pending.stream.addonId,
+                requestHeaders = requestHeaders,
+                responseHeaders = responseHeaders,
+                filename = pending.stream.behaviorHints.filename,
+                videoSize = pending.stream.behaviorHints.videoSize,
+                bingeGroup = bingeGroup,
+                streamType = resolved.streamType,
+                contentLanguage = resolveLaunchContentLanguage(),
+            )
+        }
+
+        val playerLaunch = PlayerLaunch(
+            profileId = launch.profileId,
+            title = launch.title,
+            sourceUrl = resolved.url,
+            sourceAudioUrl = resolved.audioUrl,
+            sourceHeaders = requestHeaders,
+            sourceResponseHeaders = responseHeaders,
+            externalSubtitles = resolved.subtitles,
+            streamType = resolved.streamType,
+            logo = launch.logo,
+            poster = launch.poster,
+            background = launch.background,
+            seasonNumber = launch.seasonNumber,
+            episodeNumber = launch.episodeNumber,
+            episodeTitle = launch.episodeTitle,
+            episodeThumbnail = launch.episodeThumbnail,
+            streamTitle = streamTitle,
+            streamSubtitle = streamSubtitle,
+            bingeGroup = bingeGroup,
+            pauseDescription = pauseDescription,
+            providerName = pending.stream.addonName,
+            providerAddonId = pending.stream.addonId,
+            contentType = launch.type,
+            videoId = effectiveVideoId,
+            parentMetaId = launch.parentMetaId ?: effectiveVideoId,
+            parentMetaType = launch.parentMetaType ?: launch.type,
+            initialPositionMs = pending.resumePositionMs ?: 0L,
+            initialProgressFraction = pending.resumeProgressFraction,
+            contentLanguage = resolveLaunchContentLanguage(),
+        )
+
+        pendingBrowserStreamOpen = null
+        StreamsRepository.cancelLoading()
+        if (!pending.forceInternal && (pending.forceExternal || playerSettings.externalPlayerEnabled)) {
+            streamRouteScope.launch { openExternalPlayback(playerLaunch) }
+            return
+        }
+        val launchId = PlayerLaunchStore.put(playerLaunch)
+        navController.navigate(PlayerRoute(launchId = launchId, title = playerLaunch.title))
     }
 
     var reuseHandled by rememberSaveable(launch.videoId, effectiveVideoId) { mutableStateOf(false) }
@@ -575,7 +663,20 @@ internal fun StreamDestination(
             return
         }
         if (stream.shouldOpenExternally) {
-            val opened = stream.externalOpenUrl?.let { url -> openExternalStreamUrl(url) } == true
+            val externalUrl = stream.externalOpenUrl ?: return
+            if (!forceExternal && isSupportedBrowserStreamUrl(externalUrl)) {
+                pendingBrowserStreamOpen = PendingBrowserStreamOpen(
+                    stream = stream,
+                    url = externalUrl,
+                    resumePositionMs = resolvedResumePositionMs,
+                    resumeProgressFraction = resolvedResumeProgressFraction,
+                    forceExternal = forceExternal,
+                    forceInternal = forceInternal,
+                )
+                StreamsRepository.cancelLoading()
+                return
+            }
+            val opened = openExternalStreamUrl(externalUrl)
             if (opened) {
                 StreamsRepository.cancelLoading()
             }
@@ -714,6 +815,17 @@ internal fun StreamDestination(
                         StreamsRepository.consumeAutoPlay()
                     }
                     pendingP2pStreamOpen = null
+                },
+            )
+        }
+        pendingBrowserStreamOpen?.let { pending ->
+            BrowserStreamResolver(
+                url = pending.url,
+                onResolved = { resolved -> openResolvedBrowserStream(pending, resolved) },
+                onDismiss = { pendingBrowserStreamOpen = null },
+                onError = { message ->
+                    pendingBrowserStreamOpen = null
+                    NuvioToastController.show(message)
                 },
             )
         }
