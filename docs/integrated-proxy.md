@@ -136,3 +136,33 @@ senza runtime plugin. La compatibilità live con ogni provider va provata sul di
 I test isolati includono selezione dei resolver, validazione dei risultati,
 cancellazione e header Origin applicati upstream. Il test HLS di base è già stato
 confermato sul dispositivo dall’utente; il nuovo percorso plugin richiede una nuova prova.
+
+## Toastflix Browser (Android)
+
+Gli stream Toastflix restituiti come `externalUrl` sotto
+`https://toastflix.stremio-italia.eu/extractor/` vengono risolti dentro una WebView isolata.
+La pagina continua a usare il protocollo previsto per il server locale Stremio:
+
+1. le richieste verso `http://127.0.0.1:11470/proxy/...` vengono intercettate soltanto
+   all'interno della WebView e inoltrate dal dispositivo, così i token legati all'IP
+   vengono generati con l'IP dell'utente;
+2. non viene aperta una porta LAN e non viene avviato un proxy HTTP arbitrario permanente;
+3. il deep link finale `stremio:///player/...` viene intercettato, decompresso e convertito
+   in una normale sessione del player Nuvio;
+4. URL, header, audio esterno e sottotitoli restituiti dall'extractor vengono passati al
+   proxy di playback già esistente.
+
+Il resolver accetta esclusivamente pagine extractor dell'origine Toastflix nota. Il proxy
+virtuale rifiuta destinazioni loopback, link-local e di rete privata. I metodi POST verso il
+proxy Stremio virtuale non sono ancora supportati; il flusso Toastflix DUAL usa richieste GET
+per l'estrazione legata all'IP e POST HTTPS direttamente verso Toastflix o il Sidecar.
+
+### Test manuale Toastflix
+
+1. Configurare Toastflix in modalità **Standard**, lasciando abilitate le fonti Browser.
+2. Installare il manifest generato in Nuvio.
+3. Selezionare una fonte senza il simbolo Direct `🎯`.
+4. Verificare che compaia la pagina di preparazione Toastflix dentro Nuvio.
+5. Attendere il passaggio automatico al player e verificare il badge **Proxy attivo**.
+6. Per il DUAL controllare che sia selezionabile la traccia italiana e che i sottotitoli
+   restituiti da Toastflix compaiano nel player.
