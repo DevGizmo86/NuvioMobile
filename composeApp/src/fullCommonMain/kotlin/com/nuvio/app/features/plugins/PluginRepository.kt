@@ -360,7 +360,8 @@ actual object PluginRepository {
         mediaType = mediaType,
         season = season,
         episode = episode,
-        respectSearchPause = true,
+        // Playback resolution must run even while background source searches are paused.
+        respectSearchPause = mediaType != "resolver",
     )
 
     private suspend fun executeScraperInternal(
@@ -393,6 +394,8 @@ actual object PluginRepository {
         tmdbId: String,
         mediaType: String,
     ): String {
+        // Resolver input is an opaque addon URL, not a title identifier.
+        if (mediaType == "resolver") return tmdbId
         val trimmed = tmdbId.trim()
         if (trimmed.isBlank()) return tmdbId
 

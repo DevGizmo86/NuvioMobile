@@ -112,6 +112,7 @@ internal fun LazyListScope.playbackSettingsContent(
     useLibass: Boolean,
     libassRenderType: String,
 ) {
+    item { IntegratedProxySettings(isTablet) }
     item {
         PlaybackSettingsSection(
             isTablet = isTablet,
