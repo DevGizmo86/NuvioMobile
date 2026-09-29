@@ -162,7 +162,7 @@ jobs:
             });
 
   auto-close-pull-request:
-    if: github.event_name == 'pull_request_target'
+    if: github.repository == 'NuvioMedia/NuvioMobile' && github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
       - name: Close new pull requests for the legacy app
