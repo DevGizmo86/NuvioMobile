@@ -133,13 +133,8 @@ object AuthRepository {
         }
     }.onFailure { e ->
         log.e(e) { "Email sign-in failed" }
-        val fallback = getString(Res.string.auth_sign_in_failed)
         _error.value = e.safeAuthErrorDescription()
-            ?: if (com.nuvio.app.core.diagnostics.SentryConfig.ENVIRONMENT == "debug") {
-                "$fallback (${e.safeDiagnosticTypes()})"
-            } else {
-                fallback
-            }
+            ?: getString(Res.string.auth_sign_in_failed)
     }
 
     suspend fun signOut(): Result<Unit> {
@@ -286,13 +281,6 @@ object AuthRepository {
             current = current.cause
         }
         return null
-    }
-
-    private fun Throwable.safeDiagnosticTypes(): String {
-        val outer = this::class.simpleName ?: "Unknown"
-        val deepest = generateSequence(this) { it.cause }.take(6).last()
-        val inner = deepest::class.simpleName ?: "Unknown"
-        return if (deepest === this) outer else "$outer / $inner"
     }
 
     private fun Throwable.safeAuthErrorDescription(): String? =
