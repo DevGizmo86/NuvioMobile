@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +72,7 @@ import com.nuvio.app.core.ui.nuvioCardDepth
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
 import com.nuvio.app.core.ui.posterCardClickable
 import com.nuvio.app.features.details.MetaDetails
+import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.EpisodeRatingsVisibility
 import com.nuvio.app.features.details.MetaEpisodeCardStyle
 import com.nuvio.app.features.details.MetaVideo
@@ -111,6 +113,7 @@ fun DetailSeriesContent(
     onEpisodeLongPress: ((MetaVideo) -> Unit)? = null,
     onSeasonLongPress: ((Int) -> Unit)? = null,
 ) {
+    val episodeDebug by MetaDetailsRepository.episodeDebugState.collectAsState()
     val hasVideos = meta.videos.isNotEmpty()
     if (meta.type != "series" && !hasVideos) return
 
@@ -177,6 +180,14 @@ fun DetailSeriesContent(
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (meta.name.contains("X Factor", ignoreCase = true)) {
+                Text(
+                    text = "DEBUG EPISODES\n$episodeDebug\nRendered: ${meta.videos.size} videos; S20=${meta.videos.count { it.season == 20 }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
             SeriesSeasonSelector(
                 meta = meta,
                 seasons = seasons,
