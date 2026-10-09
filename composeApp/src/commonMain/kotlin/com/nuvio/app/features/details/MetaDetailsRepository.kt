@@ -52,6 +52,8 @@ object MetaDetailsRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val _uiState = MutableStateFlow(MetaDetailsUiState())
     val uiState: StateFlow<MetaDetailsUiState> = _uiState.asStateFlow()
+    private val _episodeDebugState = MutableStateFlow("Waiting for metadata…")
+    val episodeDebugState: StateFlow<String> = _episodeDebugState.asStateFlow()
     private var activeRequestKey: String? = null
     private val cachedMetaByRequestKey = mutableMapOf<String, CachedMetaEntry>()
 
@@ -290,9 +292,11 @@ object MetaDetailsRepository {
         return try {
             TmdbSettingsRepository.ensureLoaded()
             log.d { "Fetching meta from: $url" }
+            _episodeDebugState.value = "Provider: ${manifest.name}\nURL: $url"
             val payload = fetchAddonResponseText(url)
             log.d { "Raw payload length=${payload.length}, first 500 chars: ${payload.take(500)}" }
             val result = MetaDetailsParser.parse(payload)
+            _episodeDebugState.value += "\nParsed: ${result.videos.size} videos; S20=${result.videos.count { it.season == 20 }}"
             val tmdbEnriched = withTimeoutOrNull(TMDB_ENRICH_TIMEOUT_MS) {
                 TmdbMetadataService.enrichMeta(
                     meta = result,
@@ -300,6 +304,7 @@ object MetaDetailsRepository {
                     settings = TmdbSettingsRepository.snapshot(),
                 )
             } ?: result
+            _episodeDebugState.value += "\nAfter TMDB: ${tmdbEnriched.videos.size} videos; S20=${tmdbEnriched.videos.count { it.season == 20 }}"
             val enriched = if (includeMdbList) {
                 MdbListSettingsRepository.ensureLoaded()
                 withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
