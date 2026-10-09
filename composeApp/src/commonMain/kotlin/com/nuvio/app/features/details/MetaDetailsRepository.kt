@@ -266,6 +266,7 @@ object MetaDetailsRepository {
                 tmdbEnriched
             }
             log.d { "Parsed meta: type=${enriched.type}, name=${enriched.name}, videos=${enriched.videos.size}" }
+            logEpisodeDiagnostics("after-fetch-enrichment", enriched)
             if (enriched.videos.isNotEmpty()) {
                 val first = enriched.videos.first()
                 log.d { "First video: id=${first.id} title=${first.title} s=${first.season} e=${first.episode} embeddedStreams=${first.streams.size}" }
@@ -276,6 +277,12 @@ object MetaDetailsRepository {
             log.e(e) { "Failed to fetch/parse meta from $url (manifest=${manifest.transportUrl})" }
             null
         }
+    }
+
+    private fun logEpisodeDiagnostics(stage: String, meta: MetaDetails) {
+        val seasons = meta.videos.mapNotNull { it.season }.groupingBy { it }.eachCount().toSortedMap()
+        val season20 = meta.videos.filter { it.season == 20 }.sortedBy { it.episode ?: Int.MAX_VALUE }.joinToString { video -> "E${video.episode ?: "?"}[${video.id}]" }
+        log.d { "EpisodeDiag stage=$stage metaId=${meta.id} total=${meta.videos.size} seasons=$seasons S20=[$season20]" }
     }
 
     private suspend fun findReadyMetaManifests(type: String, id: String): List<AddonManifest> {
@@ -344,6 +351,7 @@ object MetaDetailsRepository {
         mdbListSettings: com.nuvio.app.features.mdblist.MdbListSettings,
         metaScreenSettingsFingerprint: String,
     ) {
+        logEpisodeDiagnostics("publish-input", meta)
         val cachedEntry = CachedMetaEntry(baseMeta = meta)
         cachedMetaByRequestKey[requestKey] = cachedEntry
 
@@ -383,6 +391,7 @@ object MetaDetailsRepository {
         settings: com.nuvio.app.features.mdblist.MdbListSettings,
         settingsFingerprint: String,
     ): MetaDetails {
+        logEpisodeDiagnostics("before-meta-screen-enrichment", meta)
         val mdbListEnrichedMeta = withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
             MdbListMetadataService.enrichMeta(
                 meta = meta,
@@ -390,11 +399,14 @@ object MetaDetailsRepository {
                 settings = settings,
             )
         } ?: meta
+        logEpisodeDiagnostics("after-mdblist-enrichment", mdbListEnrichedMeta)
         val enrichedMeta = applyMoreLikeThisSource(
             meta = mdbListEnrichedMeta,
             fallbackItemId = fallbackItemId,
             fallbackItemType = fallbackItemType,
         )
+
+        logEpisodeDiagnostics("after-meta-screen-enrichment", enrichedMeta)
 
         cachedMetaByRequestKey[requestKey] = cachedMetaByRequestKey[requestKey]
             ?.copy(
