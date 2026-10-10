@@ -4,6 +4,7 @@ import com.nuvio.app.core.build.AppFeaturePolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.JsonObject
 
 data class P2pSettingsUiState(
     val p2pEnabled: Boolean = false,
@@ -148,6 +149,8 @@ internal expect object P2pSettingsStorage {
     fun saveTorrentProfile(profile: String)
     fun loadCacheSize(): String?
     fun saveCacheSize(size: String)
+    fun exportToSyncPayload(): JsonObject
+    fun replaceFromSyncPayload(payload: JsonObject)
 }
 
 data class P2pStreamRequest(
